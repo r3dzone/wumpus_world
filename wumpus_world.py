@@ -11,12 +11,6 @@ direction = [[0,1], #direcion[0] East
 global state_key
 state_key = {0 :"N",1 :"G",2 :"W",3 :"P",4 :"g",5 :"s",6 :"b",7 :"B",8 :"S"}
 
-global num_to_dir
-num_to_dir = {0 :"E",1 :"N",2 :"W",3 :"S"}
-
-global percept_key
-percept_key = {0 :"U",1 :"G",2 :"W",3 :"P",4 :"g",5 :"s",6 :"b",9:"A"}
-
 # 0 = not signal
 
 # 1 = gold
@@ -29,6 +23,28 @@ percept_key = {0 :"U",1 :"G",2 :"W",3 :"P",4 :"g",5 :"s",6 :"b",9:"A"}
 
 # 7 = bump
 # 8 = scream
+
+global num_to_dir
+num_to_dir = {0 :"E",1 :"N",2 :"W",3 :"S"}
+
+global num_to_arrow
+num_to_arrow = {0 :"→",1 :"↑",2 :"←",3 :"↓"}
+
+global percept_key
+percept_key = {0 :"U",1 :"G",2 :"W",3 :"P",4 :"S",5 :"G?",6 :"W?",7 :"P?",9:"A"}
+
+# 0 = Unknown
+
+# 1 = gold
+# 2 = wumpus
+# 3 = pit
+# 4 = Safe
+
+# 5 = gold?
+# 6 = wumpus?
+# 7 = pit?
+
+# 9 = Agent
 
 def print_world(env):
     for i in reversed(range(4)):
@@ -49,15 +65,24 @@ class Agent:
         self.position = [0,0] #y,x
         self.arrow_num = 3
         self.gold = False
+        self.move_cnt = 0
         self.world = world
-        self.world_percept = [[[0], [0], [0], [0]],  # world_state[y][x]
+        self.d_world = world #dynamic world
+        self.world_percept = [[[4], [0], [0], [0]],  # world_state[y][x]
                              [[0], [0], [0], [0]],
                              [[0], [0], [0], [0]],
                              [[0], [0], [0], [0]]]
 
+    def get_action(self,action):
+        self.print_world()
+
     def position_update(self,y,x):
         self.position[0] = y
         self.position[1] = x
+        self.move_cnt += 1
+        #wumpus가 있을 시 사망
+        #pit가 있을 시 사망
+        #Gold가 있을 시 climb()
 
     def GoForward(self):
         y = direction[self.A_direction] + self.position[0]
@@ -79,9 +104,15 @@ class Agent:
         else:
             self.A_direction -= 1
 
-    #def bump(self):
+    def bump(self):
+        print("앞은 벽입니다! 다시 선택해주세요")
 
-    #def scream(self,y,x):
+    def scream(self,y,x):
+        for i in range(len(d_world[y][x])):
+            if(self.d_world[y][x][i] == 2): #wumpus가 있었을 경우
+                return True
+            else:
+                return False
 
     def Grab(self):
         self.gold = True
@@ -91,12 +122,12 @@ class Agent:
             self.arrow_num -= 1
             y = direction[self.A_direction] + self.position[0]
             x = direction[self.A_direction] + self.position[1]
-            """
             if(self.scream(y,x)):
-                wumpus제거()
+                print("wumpus를 제거했습니다!")
+                #wumpus제거()
             else:
-                y,x에움퍼스없는거확인()
-            """
+                print("wumpus가 없었습니다!")
+                #y,x에움퍼스없는거확인()
 
     #def Climb(self):
 
@@ -109,18 +140,22 @@ class Agent:
             print("Agent have Gold!")
 
         for i in reversed(range(4)):
-            print("╋━━━" * 4 + "╋")
+            print("╋━━━━━━" * 4 + "╋")
             line = ""
+            agent_percept = ""
             for j in range(0, 4):
                 env_len = len(env[j][i])
-                line += "┃" + " " * (3 - env_len)
-                if( i == self.position[0] and j == self.position[1]): #Agent가 위치한 자리에서
-                    line = line[:-1]
-                    line += "A"
+                line += "┃" + " " * (6 - env_len)
+                agent_percept += "┃" + " " * 4
                 for k in range(0, env_len):
                     line += percept_key[env[j][i][k]]
+                if (i == self.position[0] and j == self.position[1]):  # Agent가 위치한 자리에서
+                    agent_percept += "A" + num_to_arrow[self.A_direction]
+                else:
+                    agent_percept += "  "
             print(line + "┃")
-        print("╋━━━" * 4 + "╋")
+            print(agent_percept + "┃")
+        print("╋━━━━━━" * 4 + "╋")
 
 
 
