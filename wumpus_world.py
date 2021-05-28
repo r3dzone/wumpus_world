@@ -44,6 +44,7 @@ percept_key = {0 :"U",1 :"G",2 :"W",3 :"P",4 :"S",5 :"G?",6 :"W?",7 :"P?",9:"A"}
 # 6 = wumpus?
 # 7 = pit?
 
+# 8 = Visited
 # 9 = Agent
 
 def print_world(env):
@@ -66,12 +67,27 @@ class Agent:
         self.arrow_num = 3
         self.gold = False
         self.move_cnt = 0
-        self.world = world
+        self.world = world #불변
         self.d_world = world #dynamic world
         self.world_percept = [[[4], [0], [0], [0]],  # world_state[y][x]
                              [[0], [0], [0], [0]],
                              [[0], [0], [0], [0]],
                              [[0], [0], [0], [0]]]
+
+    def add_percept(self,y,x,state,dir_num):
+        for j in range(0, 4):
+            if(j == ((dir_num+2)%4)):
+                continue
+            tmp_y = y + direction[j][0]
+            tmp_x = x + direction[j][1]
+            if (tmp_x >= 0 and tmp_x < 4 and tmp_y >= 0 and tmp_y < 4):
+                if (self.world_percept[tmp_y][tmp_x][0] != 0):
+                    self.world_percept[tmp_y][tmp_x].append(state)
+                else:
+                    self.world_percept[tmp_y][tmp_x][0] = state
+
+    def del_percept(self):
+        print("del!")
 
     def get_action(self,action):
         self.print_world()
@@ -80,9 +96,31 @@ class Agent:
         self.position[0] = y
         self.position[1] = x
         self.move_cnt += 1
-        #wumpus가 있을 시 사망
-        #pit가 있을 시 사망
-        #Gold가 있을 시 climb()
+
+        for i in range(len(self.d_world[y][x])):
+            if(self.d_world[y][x][i] == 2): #wumpus가 있을 시 사망/Wumpus 위치 기록
+                self.die()
+                self.world_percept[y][x] = [2,8]
+                #이전 stench 시그널들 삭제
+                break
+
+            if(self.d_world[y][x][i] == 3):  #pit가 있을 시 사망 /pit 위치 기록
+                self.die()
+                self.world_percept[y][x] = [3,8]
+                # 이전 breeze시그널들 삭제
+                break
+
+            if (self.d_world[y][x][i] == 1):  #Gold 위치 기록
+                self.world_percept[y][x] = [1]
+                # 이전 gliter시그널들 삭제
+            if(self.d_world[y][x][i] == 4): #gliter
+                self.add_percept(y,x,5,self.A_direction) # gold? state
+            if(self.d_world[y][x][i] == 5): #stench
+                self.add_percept(y,x,6,self.A_direction) # wumpus? state
+            if(self.d_world[y][x][i] == 6): #breeze
+                self.add_percept(y,x,7,self.A_direction) # pit? state
+
+            self.world_percept[y][x].append(8)
 
     def GoForward(self):
         y = direction[self.A_direction] + self.position[0]
@@ -115,7 +153,8 @@ class Agent:
                 return False
 
     def Grab(self):
-        self.gold = True
+        if(self.d_world[y][x] == 1):   #Gold가 있을 시 Grab /Gold 위치 기록
+            self.gold = True
 
     def Shoot(self):
         if(self.arrow_num > 0):
@@ -124,12 +163,21 @@ class Agent:
             x = direction[self.A_direction] + self.position[1]
             if(self.scream(y,x)):
                 print("wumpus를 제거했습니다!")
-                #wumpus제거()
+                self.d_world[y][x] = 0
+                #wumpus 시그널 삭제
             else:
                 print("wumpus가 없었습니다!")
                 #y,x에움퍼스없는거확인()
 
     #def Climb(self):
+
+    def die(self):
+        self.A_direction = 0 #intial direction - East
+        self.position = [0,0] #y,x
+        self.arrow_num = 3
+        self.gold = False
+        self.move_cnt = 0
+        self.d_world = world #dynamic world
 
     def print_world(self):
         env = self.world_percept
@@ -156,8 +204,6 @@ class Agent:
             print(line + "┃")
             print(agent_percept + "┃")
         print("╋━━━━━━" * 4 + "╋")
-
-
 
 class World:
     def __init__(self):
