@@ -172,8 +172,11 @@ class Agent:
                 return False
 
     def Grab(self):
-        if(self.d_world[y][x] == 1):   #Gold가 있을 시 Grab /Gold 위치 기록
+        if(self.d_world[self.position[0]][self.position[1]][0] == 1):   #Gold가 있을 시 Grab /Gold 위치 기록
             self.gold = True
+            del self.d_world[self.position[0]][self.position[1]][0]
+        else:
+            print("골드가 없습니다!")
 
     def Shoot(self):
         if(self.arrow_num > 0):
@@ -191,7 +194,11 @@ class Agent:
                 print("wumpus가 없었습니다!")
                 #y,x에움퍼스없는거확인()
 
-    #def Climb(self):
+    def Climb(self):
+        if(self.position[0] == 0 and self.position[1] == 0 and self.gold):
+            print("clear")
+        else:
+            print("clear 조건을 만족하지 못했습니다.")
 
     def die(self):
         self.A_direction = 0 #intial direction - East
@@ -277,7 +284,8 @@ class World:
                             self.world_state[y][x][0] = tmp_state
 
 def human_control(real,agent):
-    function_dict = {"g": agent.GoForward, "l": agent.TurnLeft, "r": agent.TurnRight, "s": agent.Shoot, "c": agent.Grab}
+    function_dict = {"g": agent.GoForward, "l": agent.TurnLeft, "r": agent.TurnRight, "s": agent.Shoot, "c": agent.Grab ,"cl": agent.Climb}
+
     while(True):
         os.system("cls")
         print("real environment!")
