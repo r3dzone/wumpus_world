@@ -1,5 +1,7 @@
 #made By R3dzone
 import random
+import os
+import copy
 
 global direction
 
@@ -31,7 +33,7 @@ global num_to_arrow
 num_to_arrow = {0 :"→",1 :"↑",2 :"←",3 :"↓"}
 
 global percept_key
-percept_key = {0 :"U",1 :"G",2 :"W",3 :"P",4 :"S",5 :"G?",6 :"W?",7 :"P?",9:"A"}
+percept_key = {0 :"U",1 :"G",2 :"W",3 :"P",4 :"S",5 :"G?",6 :"W?",7 :"P?",8:"V",9:"A"}
 
 # 0 = Unknown
 
@@ -68,7 +70,7 @@ class Agent:
         self.gold = False
         self.move_cnt = 0
         self.world = world #불변
-        self.d_world = world #dynamic world
+        self.d_world = copy.deepcopy(self.world) #dynamic world
         self.world_percept = [[[4], [0], [0], [0]],  # world_state[y][x]
                              [[0], [0], [0], [0]],
                              [[0], [0], [0], [0]],
@@ -78,13 +80,16 @@ class Agent:
         for j in range(0, 4):
             if(j == ((dir_num+2)%4)):
                 continue
-            tmp_y = y + direction[j][0]
-            tmp_x = x + direction[j][1]
+            print("add "+str(j))
+            tmp_y = y + direction[j][1]
+            tmp_x = x + direction[j][0]
             if (tmp_x >= 0 and tmp_x < 4 and tmp_y >= 0 and tmp_y < 4):
-                if (self.world_percept[tmp_y][tmp_x][0] != 0):
-                    self.world_percept[tmp_y][tmp_x].append(state)
-                else:
-                    self.world_percept[tmp_y][tmp_x][0] = state
+                tmp = self.world_percept[tmp_y][tmp_x][0]
+                if (tmp != 8 and tmp != 1 and tmp != 2 and tmp != 3 ):
+                    if (tmp != 0):
+                        self.world_percept[tmp_y][tmp_x].append(state)
+                    else:
+                        self.world_percept[tmp_y][tmp_x][0] = state
 
     def del_percept(self):
         print("del!")
@@ -96,35 +101,49 @@ class Agent:
         self.position[0] = y
         self.position[1] = x
         self.move_cnt += 1
+        
+        flag = True
+        for i in range(len(self.world_percept[y][x])):
+            if(self.world_percept[y][x][i] == 8):
+                flag = False
+            if (self.world_percept[y][x][i] == 0):
+                del self.world_percept[y][x][i]
 
-        for i in range(len(self.d_world[y][x])):
-            if(self.d_world[y][x][i] == 2): #wumpus가 있을 시 사망/Wumpus 위치 기록
-                self.die()
-                self.world_percept[y][x] = [2,8]
-                #이전 stench 시그널들 삭제
-                break
+        if(flag): #방문한적이 없을 시
+            die_flag = False
+            percept_len = len(self.world_percept[y][x])
+            for i in range(len(self.d_world[y][x])):
+                if (self.d_world[y][x][i] == 2):  # wumpus가 있을 시 사망/Wumpus 위치 기록
+                    die_flag = True
+                    self.world_percept[y][x].append(2)
+                    # 이전 stench 시그널들 삭제
 
-            if(self.d_world[y][x][i] == 3):  #pit가 있을 시 사망 /pit 위치 기록
-                self.die()
-                self.world_percept[y][x] = [3,8]
-                # 이전 breeze시그널들 삭제
-                break
+                if (self.d_world[y][x][i] == 3):  # pit가 있을 시 사망 /pit 위치 기록
+                    die_flag = True
+                    self.world_percept[y][x].append(3)
+                    # 이전 breeze시그널들 삭제
 
-            if (self.d_world[y][x][i] == 1):  #Gold 위치 기록
-                self.world_percept[y][x] = [1]
-                # 이전 gliter시그널들 삭제
-            if(self.d_world[y][x][i] == 4): #gliter
-                self.add_percept(y,x,5,self.A_direction) # gold? state
-            if(self.d_world[y][x][i] == 5): #stench
-                self.add_percept(y,x,6,self.A_direction) # wumpus? state
-            if(self.d_world[y][x][i] == 6): #breeze
-                self.add_percept(y,x,7,self.A_direction) # pit? state
+                if (self.d_world[y][x][i] == 1):  # Gold 위치 기록
+                    self.world_percept[y][x].append(1)
+                    # 이전 gliter시그널들 삭제
+                if (self.d_world[y][x][i] == 4):  # gliter
+                    self.add_percept(y, x, 5, self.A_direction)  # gold? state
+                if (self.d_world[y][x][i] == 5):  # stench
+                    self.add_percept(y, x, 6, self.A_direction)  # wumpus? state
+                if (self.d_world[y][x][i] == 6):  # breeze
+                    self.add_percept(y, x, 7, self.A_direction)  # pit? state
 
+            del self.world_percept[y][x][0:percept_len]
             self.world_percept[y][x].append(8)
+            if(die_flag):
+                self.die()
+            else:
+                self.world_percept[y][x].append(4)
+
 
     def GoForward(self):
-        y = direction[self.A_direction] + self.position[0]
-        x = direction[self.A_direction] + self.position[1]
+        y = direction[self.A_direction][1] + self.position[0]
+        x = direction[self.A_direction][0] + self.position[1]
         if(y < 0 or y > 3 or x < 0 or x > 3):
             self.bump()
         else:
@@ -146,7 +165,7 @@ class Agent:
         print("앞은 벽입니다! 다시 선택해주세요")
 
     def scream(self,y,x):
-        for i in range(len(d_world[y][x])):
+        for i in range(len(self.d_world[y][x])):
             if(self.d_world[y][x][i] == 2): #wumpus가 있었을 경우
                 return True
             else:
@@ -159,11 +178,14 @@ class Agent:
     def Shoot(self):
         if(self.arrow_num > 0):
             self.arrow_num -= 1
-            y = direction[self.A_direction] + self.position[0]
-            x = direction[self.A_direction] + self.position[1]
+            y = direction[self.A_direction][1] + self.position[0]
+            x = direction[self.A_direction][0] + self.position[1]
             if(self.scream(y,x)):
                 print("wumpus를 제거했습니다!")
-                self.d_world[y][x] = 0
+                print(self.d_world[y][x])
+                print(self.world_percept[y][x])
+                self.d_world[y][x] = [0]
+                self.world_percept[y][x] = [2]
                 #wumpus 시그널 삭제
             else:
                 print("wumpus가 없었습니다!")
@@ -177,11 +199,11 @@ class Agent:
         self.arrow_num = 3
         self.gold = False
         self.move_cnt = 0
-        self.d_world = world #dynamic world
+        self.d_world = copy.deepcopy(self.world) #dynamic world
 
     def print_world(self):
         env = self.world_percept
-        print("Agent's position is " +str(self.position[1]+1)+"," +str(self.position[0]+1))
+        print("Agent's position is " +str(self.position[0]+1)+"," +str(self.position[1]+1))
         print("        direction is "+num_to_dir[self.A_direction])
         print("        arrow_num is " + str(self.arrow_num))
         if(self.gold):
@@ -197,7 +219,7 @@ class Agent:
                 agent_percept += "┃" + " " * 4
                 for k in range(0, env_len):
                     line += percept_key[env[j][i][k]]
-                if (i == self.position[0] and j == self.position[1]):  # Agent가 위치한 자리에서
+                if (j == self.position[0] and i == self.position[1]):  # Agent가 위치한 자리에서
                     agent_percept += "A" + num_to_arrow[self.A_direction]
                 else:
                     agent_percept += "  "
@@ -254,10 +276,21 @@ class World:
                         else:
                             self.world_state[y][x][0] = tmp_state
 
+def human_control(real,agent):
+    function_dict = {"g": agent.GoForward, "l": agent.TurnLeft, "r": agent.TurnRight, "s": agent.Shoot, "c": agent.Grab}
+    while(True):
+        os.system("cls")
+        print("real environment!")
+        print_world(real.world_state)
+        print("agent's percept")
+        agent.print_world()
+        behavior = function_dict[input("어떻게 행동할까요?")]
+        behavior()
+
 if __name__ == "__main__":
     Wumpus_World = World()
     user_Agent = Agent(Wumpus_World.world_state)
-    print("real environment!")
-    print_world(Wumpus_World.world_state)
-    print("agent's percept")
-    user_Agent.print_world()
+    control = input("select control mode! [h: human control/a or another: AI control]")
+    if(control == "h"):
+        human_control(Wumpus_World,user_Agent)
+
