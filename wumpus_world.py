@@ -2,6 +2,7 @@
 import random
 import os
 import copy
+import time
 
 global direction
 
@@ -65,7 +66,7 @@ class Agent:
     def __init__(self,world):
         print("new Agent")
         self.A_direction = 0 #intial direction - East
-        self.position = [0,0] #y,x
+        self.position = [0,0] #x,y
         self.arrow_num = 3
         self.gold = False
         self.move_cnt = 0
@@ -292,8 +293,60 @@ def human_control(real,agent):
         print_world(real.world_state)
         print("agent's percept")
         agent.print_world()
+        weight = [0, 0, 0, 0]
+        for i in range(0, 4):
+            tmp_y = agent.position[1] + direction[i][0]
+            tmp_x = agent.position[0] + direction[i][1]
+            # print(str(tmp_x+1)+","+str(tmp_y+1)+"확인")
+            if (tmp_x >= 0 and tmp_x < 4 and tmp_y >= 0 and tmp_y < 4):
+                for j in range(len(agent.world_percept[tmp_x][tmp_y])):
+                    weight_dic = {0: 0, 1: 1000, 2: -1000, 3: -1000, 4: 0, 5: 1, 6: -1, 7: -1, 8: -100}
+                    weight[i] += weight_dic[agent.world_percept[tmp_x][tmp_y][j]]
+            else:
+                weight[i] = -1000
+            print(num_to_arrow[i] + str(tmp_x + 1) + "," + str(tmp_y + 1) + ":" + str(weight[i]))
+
+        max_dir = agent.A_direction
+        for i in range(0, 4):
+            if (weight[(agent.A_direction + 1 + i) % 4] >= weight[max_dir]):
+                max_dir = (agent.A_direction + 1 + i) % 4
+        print("go " + num_to_arrow[max_dir])
         behavior = function_dict[input("어떻게 행동할까요?")]
         behavior()
+
+def AI_control(real,agent):
+    function_dict = {"g": agent.GoForward, "l": agent.TurnLeft, "r": agent.TurnRight, "s": agent.Shoot, "c": agent.Grab, "cl": agent.Climb}
+    agent.position[0] = 3
+    agent.position[1] = 1
+    while(True):
+        os.system("cls")
+        print("real environment!")
+        print_world(real.world_state)
+        print("agent's percept")
+
+        agent.print_world()
+        time.sleep(3)
+        weight = [0, 0, 0, 0]
+        for i in range(0, 4):
+            tmp_y = agent.position[1] + direction[i][0]
+            tmp_x = agent.position[0] + direction[i][1]
+            # print(str(tmp_x+1)+","+str(tmp_y+1)+"확인")
+            if (tmp_x >= 0 and tmp_x < 4 and tmp_y >= 0 and tmp_y < 4):
+                for j in range(len(agent.world_percept[tmp_x][tmp_y])):
+                    weight_dic = {0: 0, 1: 1000, 2: -1000, 3: -1000, 4: 0, 5: 1, 6: -1, 7: -1, 8: -100}
+                    weight[i] += weight_dic[agent.world_percept[tmp_x][tmp_y][j]]
+            else:
+                weight[i] = -1000
+            print(num_to_arrow[i] + str(tmp_x + 1) + "," + str(tmp_y + 1) + ":" + str(weight[i]))
+
+        max_dir = agent.A_direction
+        for i in range(0, 4):
+            if (weight[(agent.A_direction + 1 + i) % 4] >= weight[max_dir]):
+                max_dir = (agent.A_direction + 1 + i) % 4
+        print("go " + num_to_arrow[max_dir])
+        #behavior = function_dict[1]
+        #behavior()
+
 
 if __name__ == "__main__":
     Wumpus_World = World()
@@ -301,4 +354,5 @@ if __name__ == "__main__":
     control = input("select control mode! [h: human control/a or another: AI control]")
     if(control == "h"):
         human_control(Wumpus_World,user_Agent)
-
+    else:
+        AI_control(Wumpus_World,user_Agent)
