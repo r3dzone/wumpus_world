@@ -169,6 +169,7 @@ class Agent:
         print("앞은 벽입니다! 다시 선택해주세요")
 
     def scream(self,y,x):
+        print(str(y)+","+str(x)+" "+str(self.d_world[y][x]))
         for i in range(len(self.d_world[y][x])):
             if(self.d_world[y][x][i] == 2): #wumpus가 있었을 경우
                 return True
@@ -196,6 +197,8 @@ class Agent:
                 #wumpus 시그널 삭제
             else:
                 print("wumpus가 없었습니다!")
+                if( 6 in self.world_percept[y][x]):
+                    self.world_percept[y][x].remove(6)
                 #y,x에움퍼스없는거확인()
 
     def Climb(self):
@@ -292,15 +295,19 @@ class World:
                         else:
                             self.world_state[y][x][0] = tmp_state
 
+def print_both(real,agent,sleep):
+    os.system("cls")
+    print("real environment!")
+    print_world(real.world_state)
+    print("agent's percept")
+    agent.print_world()
+    time.sleep(sleep)
+
 def human_control(real,agent):
     function_dict = {"g": agent.GoForward, "l": agent.TurnLeft, "r": agent.TurnRight, "s": agent.Shoot, "c": agent.Grab ,"cl": agent.Climb}
 
     while(True):
-        os.system("cls")
-        print("real environment!")
-        print_world(real.world_state)
-        print("agent's percept")
-        agent.print_world()
+        print_both(real, agent, 0)
         weight = [0, 0, 0, 0]
         for i in range(0, 4):
             tmp_y = agent.position[1] + direction[i][0]
@@ -326,24 +333,38 @@ def AI_control(real,agent):
     function_dict = {"g": agent.GoForward, "r": agent.TurnLeft, "l": agent.TurnRight, "s": agent.Shoot, "c": agent.Grab, "cl": agent.Climb}
 
     while(not agent.gold):
-        os.system("cls")
-        print("real environment!")
-        print_world(real.world_state)
-        print("agent's percept")
-        agent.print_world()
-        time.sleep(2)
+        print_both(real, agent, 2)
         weight = [0, 0, 0, 0]
+        shoot_list = [False, False, False, False]
         for i in range(0, 4):
             tmp_y = agent.position[1] + direction[i][0]
             tmp_x = agent.position[0] + direction[i][1]
             # print(str(tmp_x+1)+","+str(tmp_y+1)+"확인")
             if (tmp_x >= 0 and tmp_x < 4 and tmp_y >= 0 and tmp_y < 4):
                 for j in range(len(agent.world_percept[tmp_x][tmp_y])):
+                    if (agent.world_percept[tmp_x][tmp_y][j] == 6):
+                        shoot_list[i] = True
                     weight_dic = {0: 0, 1: 1000, 2: -1000, 3: -1000, 4: 0, 5: 1, 6: -1, 7: -1, 8: -100}
                     weight[i] += weight_dic[agent.world_percept[tmp_x][tmp_y][j]]
             else:
                 weight[i] = -1000
             print(num_to_arrow[i] + str(tmp_x + 1) + "," + str(tmp_y + 1) + ":" + str(weight[i]))
+        if(True in shoot_list and agent.arrow_num > 0):
+            original_dir = agent.A_direction
+            if(shoot_list[original_dir]):
+                agent.Shoot()
+            if (shoot_list[(original_dir+ 4 +1) % 4]): #왼쪽
+                agent.TurnLeft()
+                print_both(real, agent, 1)
+                agent.Shoot()
+            if(shoot_list[(original_dir+4-1)%4]): #오른쪽
+                agent.TurnRight()
+                print_both(real, agent, 1)
+                if (original_dir - agent.A_direction) < 0:
+                    agent.TurnRight()
+                    print_both(real, agent, 1)
+                agent.Shoot()
+            continue
 
         max_dir = agent.A_direction
         for i in range(0, 4):
@@ -352,28 +373,15 @@ def AI_control(real,agent):
         print("go " + num_to_arrow[max_dir])
         while(max_dir != agent.A_direction):
             agent.TurnLeft()
-            os.system("cls")
-            print("real environment!")
-            print_world(real.world_state)
-            print("agent's percept")
-            agent.print_world()
-            time.sleep(1)
+            print_both(real,agent,1)
         agent.GoForward()
-        print(agent.move_stack)
         if(agent.d_world[agent.position[0]][agent.position[1]][0] == 1):
             agent.Grab()
             agent.TurnLeft()
             agent.TurnLeft()
             for i in reversed(range(len(agent.move_stack)-2)):
-                print("실행")
-                print(i)
                 function_dict[agent.move_stack[i]]()
-                os.system("cls")
-                print("real environment!")
-                print_world(real.world_state)
-                print("agent's percept")
-                agent.print_world()
-                time.sleep(1)
+                print_both(real,agent,1)
             agent.Climb()
 
 if __name__ == "__main__":
