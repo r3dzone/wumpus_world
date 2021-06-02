@@ -76,12 +76,12 @@ class Agent:
                              [[0], [0], [0], [0]],
                              [[0], [0], [0], [0]],
                              [[0], [0], [0], [0]]]
+        self.move_stack = []
 
     def add_percept(self,y,x,state,dir_num):
         for j in range(0, 4):
             if(j == ((dir_num+2)%4)):
                 continue
-            print("add "+str(j))
             tmp_y = y + direction[j][1]
             tmp_x = x + direction[j][0]
             if (tmp_x >= 0 and tmp_x < 4 and tmp_y >= 0 and tmp_y < 4):
@@ -149,18 +149,21 @@ class Agent:
             self.bump()
         else:
             self.position_update(y,x)
+            self.move_stack.append("g")
 
     def TurnLeft(self):
         if(self.A_direction == 3):
             self.A_direction = 0
         else:
             self.A_direction += 1
+        self.move_stack.append("l")
 
     def TurnRight(self):
         if(self.A_direction == 0):
             self.A_direction = 3
         else:
             self.A_direction -= 1
+        self.move_stack.append("r")
 
     def bump(self):
         print("앞은 벽입니다! 다시 선택해주세요")
@@ -208,6 +211,7 @@ class Agent:
         self.gold = False
         self.move_cnt = 0
         self.d_world = copy.deepcopy(self.world) #dynamic world
+        self.move_stack = []
 
     def print_world(self):
         env = self.world_percept
@@ -223,9 +227,13 @@ class Agent:
             agent_percept = ""
             for j in range(0, 4):
                 env_len = len(env[j][i])
-                line += "┃" + " " * (6 - env_len)
+                len_tmp = env_len
+                for k in range(env_len):
+                    if(env[j][i][k] >= 5 and env[j][i][k] <= 7):
+                        len_tmp += 1
+                line += "┃" + " " * (6 - len_tmp)
                 agent_percept += "┃" + " " * 4
-                for k in range(0, env_len):
+                for k in range(env_len):
                     line += percept_key[env[j][i][k]]
                 if (j == self.position[0] and i == self.position[1]):  # Agent가 위치한 자리에서
                     agent_percept += "A" + num_to_arrow[self.A_direction]
@@ -315,17 +323,15 @@ def human_control(real,agent):
         behavior()
 
 def AI_control(real,agent):
-    function_dict = {"g": agent.GoForward, "l": agent.TurnLeft, "r": agent.TurnRight, "s": agent.Shoot, "c": agent.Grab, "cl": agent.Climb}
-    agent.position[0] = 3
-    agent.position[1] = 1
-    while(True):
+    function_dict = {"g": agent.GoForward, "r": agent.TurnLeft, "l": agent.TurnRight, "s": agent.Shoot, "c": agent.Grab, "cl": agent.Climb}
+
+    while(not agent.gold):
         os.system("cls")
         print("real environment!")
         print_world(real.world_state)
         print("agent's percept")
-
         agent.print_world()
-        time.sleep(3)
+        time.sleep(2)
         weight = [0, 0, 0, 0]
         for i in range(0, 4):
             tmp_y = agent.position[1] + direction[i][0]
@@ -344,9 +350,31 @@ def AI_control(real,agent):
             if (weight[(agent.A_direction + 1 + i) % 4] >= weight[max_dir]):
                 max_dir = (agent.A_direction + 1 + i) % 4
         print("go " + num_to_arrow[max_dir])
-        #behavior = function_dict[1]
-        #behavior()
-
+        while(max_dir != agent.A_direction):
+            agent.TurnLeft()
+            os.system("cls")
+            print("real environment!")
+            print_world(real.world_state)
+            print("agent's percept")
+            agent.print_world()
+            time.sleep(1)
+        agent.GoForward()
+        print(agent.move_stack)
+        if(agent.d_world[agent.position[0]][agent.position[1]][0] == 1):
+            agent.Grab()
+            agent.TurnLeft()
+            agent.TurnLeft()
+            for i in reversed(range(len(agent.move_stack)-2)):
+                print("실행")
+                print(i)
+                function_dict[agent.move_stack[i]]()
+                os.system("cls")
+                print("real environment!")
+                print_world(real.world_state)
+                print("agent's percept")
+                agent.print_world()
+                time.sleep(1)
+            agent.Climb()
 
 if __name__ == "__main__":
     Wumpus_World = World()
