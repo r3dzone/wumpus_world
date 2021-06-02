@@ -58,7 +58,10 @@ def print_world(env):
             env_len = len(env[j][i])
             line += "┃" + " "*(3-env_len)
             for k in range(0,env_len):
-                line += state_key[env[j][i][k]]
+                if(env[j][i][k] < 4 and env[j][i][k] > 0 ):
+                    line += state_key[env[j][i][k]]
+                else:
+                    line += " "
         print(line + "┃")
     print("╋━━━" * 4 + "╋")
 
@@ -260,15 +263,20 @@ class World:
             self.world_state[0][0][0] = 0 #safe
             for i in range(1,16):
                 #world_state[int(i/4)][int(i%4)].append(1)
-                if((int(i/4) == 0 and int(i%4) == 1) or (int(i/4) == 1 and int(i%4) == 0)):
+                if((int(i/4) == 0 and int(i%4) == 1) or (int(i/4) == 1 and int(i%4) == 0)): #안전지대
                     continue
-                print(str(int(i / 4)) + "," + str(int(i % 4)))
+                #print(str(int(i / 4)) + "," + str(int(i % 4)))
                 if(random.choices(range(0,2),weights=[85,15]) == [1]):#15% 확률
                     self.world_state[int(i / 4)][int(i % 4)][0] = 3
-                elif(random.choices(range(0,2),weights=[85,15]) == [1]):#15% 확률
+                if(random.choices(range(0,2),weights=[85,15]) == [1]):#15% 확률
                     self.world_state[int(i / 4)][int(i % 4)][0] = 2
-                else:
+                if(len(self.world_state[int(i / 4)][int(i % 4)])==0):
                     self.world_state[int(i / 4)][int(i % 4)][0] = 0
+            while(True):
+                gold_tmp = random.randrange(1,16)
+                if(self.world_state[int(gold_tmp / 4)][int(gold_tmp % 4)][0] == 0):
+                    self.world_state[int(gold_tmp / 4)][int(gold_tmp % 4)][0] = 1
+                    break
         else:
             self.world_state = [[[0], [0], [0], [0]], #world_state[y][x] 90도 시계 rotation
                                 [[0], [0], [1], [0]],
